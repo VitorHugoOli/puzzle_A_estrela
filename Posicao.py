@@ -13,4 +13,10 @@ class Posicao:
         return self.coluna
 
     def setColuna(self, coluna):
-        self.coluna = coluna;
+        self.coluna = coluna
+
+    def toTuple(self):
+        return self.linha, self.coluna
+
+    def __str__(self):
+        return str(self.toTuple())
