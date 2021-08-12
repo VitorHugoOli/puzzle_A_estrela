@@ -1,3 +1,4 @@
+import copy
 import math
 import time
 import traceback
@@ -15,7 +16,7 @@ def positionToTuple(pos: Posicao):
 
 
 def dist2points(a: tuple, b: tuple):
-    return math.sqrt(((a[0] - b[0]) ** 2) + ((a[1] - b[1]) ** 2))
+    return abs(a[0] - b[0]) + abs((a[1] - b[1]))
 
 
 class Node:
@@ -55,23 +56,10 @@ class AEstrelaImp(AEstrela):
         8: (2, 2),
     }
 
-    # def searchLessThanActualDECRP(self, actual_node: Node, index):
-    #     if index == -1:
-    #         return None
-    #
-    #     for i in self.TREE[index]:
-    #         if not i.select_to_gr and not i.was_explored and i.f_value < actual_node.f_value:
-    #             return i
-    #     return self.searchLessThanActual(actual_node, index - 1)
-
     def searchLessThanActual(self, new_f_value) -> (Node, InternalBranch):
         for i in reversed(self.TREE):
             for j in i.nodes:
-                print(not j.select_to_gr)
-                print(not j.was_explored)
-                print(j.f_value != 0)
-                print(j.f_value < new_f_value)
-                if not j.select_to_gr and not j.was_explored and j.f_value < new_f_value:
+                if not j.select_to_gr and not j.was_explored and j.f_value <= new_f_value:
                     return j, i
         return None, None
 
@@ -107,6 +95,20 @@ class AEstrelaImp(AEstrela):
     def distToRightPlace(self, valor, loc: tuple):
         return dist2points(loc, self.shouldBeIn(valor))
 
+    def calcTotalDistQuarteirao(self, tab: QuebraCabecaImp):
+        result = 0
+        for linha, i in enumerate(tab.getTab()):
+            for coluna, j in enumerate(i):
+                if j == -1:
+                    continue
+                result += self.distToRightPlace(j, (linha, coluna))
+        return result
+
+    def simulateTabFValue(self, pos_move: tuple, empty_loc: tuple, tab: QuebraCabecaImp):
+        tab.move(empty_loc[0], empty_loc[1], pos_move[0], pos_move[1])
+
+        return self.calcTotalDistQuarteirao(tab)
+
     def getSolucao(self, qc: QuebraCabecaImp):
         count = 0
 
@@ -117,40 +119,34 @@ class AEstrelaImp(AEstrela):
             count += 1
 
             best_node = None
-            best_score = 10
+            best_score = 100
 
             new_branch = InternalBranch(father_index=len(self.TREE), tab_state=tab)
 
-            print("Init:")
+            print("Init:", count)
             print(qc.toString())
 
             for i in qc.getMovePossiveis():
                 number = tab[i.getLinha()][i.getColuna()]
 
-                if tab[0] == [1, 2, 3] and tab[0].__contains__(number):
-                    continue
-
                 if len(self.TREE) > 0 and self.TREE[-1].exploring_number == number:
                     continue
 
                 node = Node(
-                    f=self.distToRightPlace(number, empty_loc.toTuple()),
+                    f=self.simulateTabFValue(i.toTuple(), empty_loc.toTuple(), copy.deepcopy(qc)),
                     number=number,
                     actual_pos=i.toTuple()
                 )
 
                 new_branch.nodes.append(node)
 
-                if 0 <= node.f_value < best_score:
+                if node.f_value < best_score:
                     best_node = node
                     best_score = node.f_value
 
             print(' [] '.join(str(e) for e in new_branch.nodes))
 
-            if best_node is None:
-                back_node, back_branch = self.stuck()
-            else:
-                back_node, back_branch = self.searchLessThanActual(best_score)
+            back_node, back_branch = self.searchLessThanActual(best_score)
 
             if back_node is None:
                 best_node.select_to_gr = True
@@ -161,11 +157,8 @@ class AEstrelaImp(AEstrela):
                 best_node = back_node
                 qc.setTab(back_branch.tab_state)
                 empty_loc = qc.getPosVazio()
-                print(f"Back To: {back_branch}")
-                print(f"Back To: {back_node}")
-                # print(qc.toString())
 
-            print(' || '.join(str(e) for e in self.TREE))
+            # print(' || '.join(str(e) for e in self.TREE))
 
             try:
                 qc.move(empty_loc.getLinha(), empty_loc.getColuna(), best_node.actual_pos[0], best_node.actual_pos[1])
@@ -173,11 +166,9 @@ class AEstrelaImp(AEstrela):
                 self.printError(ex, best_node, best_score, qc)
                 break
 
-            # print("End:")
             print(qc.toString())
-            # print(count)
 
-            if count >= 60:
+            if count >= 10000:
                 print("Algo de errado, não está certo 🤔")
                 break
 
