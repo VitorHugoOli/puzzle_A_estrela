@@ -10,7 +10,9 @@ def main():
     instance = AEstrelaImp()
 
     # tab = [[7, 2, 1], [3, 4, 8], [6, QuebraCabecaImp.VAZIO, 5]]
-    tab = [[7, 2, 4], [5, QuebraCabecaImp.VAZIO, 6], [8, 3, 1]]
+    tab = [[7, 2, 4], [8, 3, 1], [5, QuebraCabecaImp.VAZIO, 6]]
+    # tab = [[7, 2, 4], [5, QuebraCabecaImp.VAZIO, 6], [8, 3, 1]]
+    # tab = [[7, 2, 4], [1, QuebraCabecaImp.VAZIO, 5], [8, 3, 6]]
     # tab = [[8, 1, 2], [QuebraCabecaImp.VAZIO, 4, 3], [7, 6, 5]] # Exemplo sem solução (Not Solvable). Ref: https://www.geeksforgeeks.org/check-instance-8-puzzle-solvable/
     qc.setTab(tab)
     print(qc.toString())

@@ -19,19 +19,31 @@ def dist2points(a: tuple, b: tuple):
 
 
 class Node:
-    def __init__(self, father_index, f):
+    def __init__(self, f, number, actual_pos):
         self.select_to_gr: bool = False
-        self.father = father_index
-        self.was_explored = False
+        self.was_explored: bool = False
         self.f_value = f
+        self.number = number
+        self.actual_pos = actual_pos
+
+    def __str__(self):
+        return f"({self.number}: {self.f_value}),{self.select_to_gr},{self.was_explored}"
 
 
-class InteranalBranch():
-    nodes: List[Node]
+class InternalBranch:
+    def __init__(self, father_index, tab_state):
+        self.nodes: List[Node] = []
+        self.exploring_number = -1
+        self.father_index = father_index
+        self.tab_state = tab_state
+
+    def __str__(self):
+        return str(', '.join(str(e) for e in self.nodes))
 
 
 class AEstrelaImp(AEstrela):
-    TREE = []
+    TREE: List[InternalBranch] = []
+
     RIGHT_POSITION = {
         1: (0, 0),
         2: (0, 1),
@@ -43,23 +55,48 @@ class AEstrelaImp(AEstrela):
         8: (2, 2),
     }
 
-    def searchLessThanActual(self, actual_node: Node, index):
-        if index == -1:
-            return None
+    # def searchLessThanActualDECRP(self, actual_node: Node, index):
+    #     if index == -1:
+    #         return None
+    #
+    #     for i in self.TREE[index]:
+    #         if not i.select_to_gr and not i.was_explored and i.f_value < actual_node.f_value:
+    #             return i
+    #     return self.searchLessThanActual(actual_node, index - 1)
 
-        for i in self.TREE[index]:
-            if not i.select_to_gr and not i.was_explored and i.f_value < actual_node.f_value:
-                return i
-        return self.searchLessThanActual(actual_node, index - 1)
+    def searchLessThanActual(self, new_f_value) -> (Node, InternalBranch):
+        for i in reversed(self.TREE):
+            for j in i.nodes:
+                print(not j.select_to_gr)
+                print(not j.was_explored)
+                print(j.f_value != 0)
+                print(j.f_value < new_f_value)
+                if not j.select_to_gr and not j.was_explored and j.f_value < new_f_value:
+                    return j, i
+        return None, None
 
-    def backtrack(self, node_to_back: Node):
-        self.TREE = self.TREE[:node_to_back.father + 1]
-        for i in self.TREE[:node_to_back.father + 1]:
+    def backtrack(self, back_branch: InternalBranch, back_node: Node):
+        self.TREE = self.TREE[:back_branch.father_index + 1]
+
+        for i in self.TREE[back_branch.father_index].nodes:
             if i.select_to_gr:
                 i.select_to_gr = False
                 i.was_explored = True
-            if i == node_to_back:
+            if i == back_node:
+                self.TREE[back_branch.father_index].exploring_number = i.number
                 i.select_to_gr = True
+
+    def stuck(self) -> (Node, InternalBranch):
+        best_node = None
+        index = 0
+        while best_node is None:
+            index -= 1
+            less_valor = 10
+            for i in self.TREE[index].nodes:
+                if not i.select_to_gr and not i.was_explored and i.f_value < less_valor:
+                    best_node = i
+
+        return best_node, self.TREE[index]
 
     def __init__(self):
         pass
@@ -72,53 +109,79 @@ class AEstrelaImp(AEstrela):
 
     def getSolucao(self, qc: QuebraCabecaImp):
         count = 0
-        block_last_value = -1
 
         while not qc.isOrdenado():
-            count += 1
             tab = qc.getTab()
             empty_loc = qc.getPosVazio()
-            near_dist = ()
-            near_dist_score = 10
-            sub_nodes = []
-            father_index = len(self.TREE) - 1
-            index_sub_node = -1
 
-            for i in qc.getMovePossiveis():
-                if block_last_value != tab[i.getLinha()][i.getColuna()]:
-                    f = self.distToRightPlace(tab[i.getLinha()][i.getColuna()], i.toTuple())
+            count += 1
 
-                    sub_nodes.append(Node(father_index, f))
+            best_node = None
+            best_score = 10
 
-                    if 0 < f < near_dist_score:
-                        near_dist = i.toTuple()
-                        near_dist_score = f
-                        index_sub_node = len(sub_nodes) - 1
+            new_branch = InternalBranch(father_index=len(self.TREE), tab_state=tab)
 
-            if near_dist == ():
-                print("NÃO FOI POSSIVEL MELHORAR")
-                break
-
-            result = self.searchLessThanActual(sub_nodes[index_sub_node], len(self.TREE) - 1)
-
-            if result is None:
-                self.TREE.append(sub_nodes)
-                block_last_value = tab[near_dist[0]][near_dist[1]]
-            else:
-                self.backtrack(result)
-
-            try:
-                qc.move(empty_loc.getLinha(), empty_loc.getColuna(), near_dist[0], near_dist[1])
-            except Exception as ex:
-                self.printError(ex, near_dist, near_dist_score, qc)
-                break
-
-            time.sleep(0.8)
+            print("Init:")
             print(qc.toString())
 
-            if count >= 1000000:
+            for i in qc.getMovePossiveis():
+                number = tab[i.getLinha()][i.getColuna()]
+
+                if tab[0] == [1, 2, 3] and tab[0].__contains__(number):
+                    continue
+
+                if len(self.TREE) > 0 and self.TREE[-1].exploring_number == number:
+                    continue
+
+                node = Node(
+                    f=self.distToRightPlace(number, empty_loc.toTuple()),
+                    number=number,
+                    actual_pos=i.toTuple()
+                )
+
+                new_branch.nodes.append(node)
+
+                if 0 <= node.f_value < best_score:
+                    best_node = node
+                    best_score = node.f_value
+
+            print(' [] '.join(str(e) for e in new_branch.nodes))
+
+            if best_node is None:
+                back_node, back_branch = self.stuck()
+            else:
+                back_node, back_branch = self.searchLessThanActual(best_score)
+
+            if back_node is None:
+                best_node.select_to_gr = True
+                new_branch.exploring_number = best_node.number
+                self.TREE.append(new_branch)
+            else:
+                self.backtrack(back_branch, back_node)
+                best_node = back_node
+                qc.setTab(back_branch.tab_state)
+                empty_loc = qc.getPosVazio()
+                print(f"Back To: {back_branch}")
+                print(f"Back To: {back_node}")
+                # print(qc.toString())
+
+            print(' || '.join(str(e) for e in self.TREE))
+
+            try:
+                qc.move(empty_loc.getLinha(), empty_loc.getColuna(), best_node.actual_pos[0], best_node.actual_pos[1])
+            except Exception as ex:
+                self.printError(ex, best_node, best_score, qc)
+                break
+
+            # print("End:")
+            print(qc.toString())
+            # print(count)
+
+            if count >= 60:
                 print("Algo de errado, não está certo 🤔")
                 break
+
+        print("BINGOOOOOOOOOOOOOOOOOOOOOOOOOOOO!!!")
         return []
 
     @staticmethod
@@ -130,7 +193,7 @@ class AEstrelaImp(AEstrela):
 {qc.toString()}
 ╔════════════════════════════
 ║Error: {ex}
-# ║stack: {traceback.format_exc()}
+║stack: {traceback.format_exc()}
 ║Nearst_dist: {near_dist}
 ║Nearst_dist_score: {near_dist_score}
 ╚════════════════════════════\u001b[0m
