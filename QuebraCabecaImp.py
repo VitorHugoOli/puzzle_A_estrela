@@ -91,11 +91,12 @@ class QuebraCabecaImp(QuebraCabeca):
         """
         Retorna a posicao de um valor em relacao a um array
         :param valor: integer 0>=valor<=7
-        :param tab: inter[][]
+        :param tab: int[][]
         :return: A posicao do valor recebido em relação a tabela.
         """
         if tab is None:
             tab = self.tab
+
         for i in range(0, 3):
             for j in range(0, 3):
                 if tab[i][j] == valor:

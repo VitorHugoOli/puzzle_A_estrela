@@ -1,5 +1,6 @@
 import abc
 
+
 class QuebraCabeca(metaclass=abc.ABCMeta):
     VAZIO = -1
 

@@ -6,7 +6,7 @@
 
   Foi adicionado os metodo toTuple e toString, para simplificar a usuabilidade da classe
   ```python
-       def toTuple(self):
+    def toTuple(self):
         return self.linha, self.coluna
 
     def __str__(self):
@@ -52,6 +52,7 @@
 
 
   
+### Por fim, para melhor experiência recomendo que o programa seja executado em um terminal linux.
 
 
 
